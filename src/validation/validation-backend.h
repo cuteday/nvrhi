@@ -23,7 +23,7 @@
 #pragma once
 
 #include <nvrhi/validation.h>
-#include "../common/sparse-bitset.h"
+#include <bitset>
 
 namespace nvrhi::validation
 {
@@ -41,10 +41,10 @@ namespace nvrhi::validation
 
     struct ShaderBindingSet
     {
-        sparse_bitset SRV;
-        sparse_bitset Sampler;
-        sparse_bitset UAV;
-        sparse_bitset CB;
+        std::bitset<128> SRV;
+        std::bitset<128> Sampler;
+        std::bitset<16> UAV;
+        std::bitset<16> CB;
         uint32_t numVolatileCBs = 0;
         Range rangeSRV;
         Range rangeSampler;

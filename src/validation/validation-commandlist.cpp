@@ -1570,8 +1570,6 @@ namespace nvrhi::validation
 
             if (!validateBuildTopLevelAccelStruct(wrapper, numInstances, buildFlags))
                 return;
-
-            const bool allowEmptyInstances = (buildFlags & rt::AccelStructBuildFlags::AllowEmptyInstances) != 0;
             
             for (size_t i = 0; i < numInstances; i++)
             {
@@ -1579,18 +1577,11 @@ namespace nvrhi::validation
 
                 if (instance.bottomLevelAS == nullptr)
                 {
-                    if (allowEmptyInstances)
-                    {
-                        continue;
-                    }
-                    else
-                    {
-                        std::stringstream ss;
-                        ss << "TLAS " << utils::DebugNameToString(as->getDesc().debugName) << " build instance " << i
-                            << " has a NULL bottomLevelAS";
-                        error(ss.str());
-                        return;
-                    }
+                    std::stringstream ss;
+                    ss << "TLAS " << utils::DebugNameToString(as->getDesc().debugName) << " build instance " << i
+                        << " has a NULL bottomLevelAS";
+                    error(ss.str());
+                    return;
                 }
 
                 AccelStructWrapper* blasWrapper = dynamic_cast<AccelStructWrapper*>(instance.bottomLevelAS);
@@ -1615,7 +1606,7 @@ namespace nvrhi::validation
                     }
                 }
 
-                if (instance.instanceMask == 0 && !allowEmptyInstances)
+                if (instance.instanceMask == 0)
                 {
                     std::stringstream ss;
                     ss << "TLAS " << utils::DebugNameToString(as->getDesc().debugName) << " build instance " << i

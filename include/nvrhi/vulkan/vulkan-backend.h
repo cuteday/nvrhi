@@ -24,8 +24,8 @@
 
 #include <nvrhi/vulkan.h>
 #include <nvrhi/utils.h>
-#include "../common/state-tracking.h"
-#include "../common/versioning.h"
+#include <nvrhi/common/state-tracking.h>
+#include <nvrhi/common/versioning.h>
 #include <mutex>
 #include <list>
 
@@ -1021,6 +1021,10 @@ namespace nvrhi::vulkan
 
         Queue* getQueue(CommandQueue queue) const { return m_Queues[int(queue)].get(); }
         vk::QueryPool getTimerQueryPool() const { return m_TimerQueryPool; }
+		
+        // Added getters:
+		const VulkanContext &getContext() const { return m_Context; }
+		VulkanAllocator &getAllocator() { return m_Allocator; }
 
         // IResource implementation
 

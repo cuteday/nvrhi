@@ -22,7 +22,8 @@
 
 #include <algorithm>
 
-#include "vulkan-backend.h"
+#include <nvrhi/vulkan/vulkan-backend.h>
+#include <nvrhi/vulkan/vulkan-texture.h>
 #include <nvrhi/common/misc.h>
 
 namespace nvrhi::vulkan
@@ -225,7 +226,7 @@ namespace nvrhi::vulkan
     }
 
     // fills out all info fields in Texture based on a TextureDesc
-    static void fillTextureInfo(Texture *texture, const TextureDesc& desc)
+    void fillTextureInfo(Texture *texture, const TextureDesc& desc)
     {
         texture->desc = desc;
 
@@ -247,6 +248,7 @@ namespace nvrhi::vulkan
                                 .setUsage(usage)
                                 .setSharingMode(vk::SharingMode::eExclusive)
                                 .setSamples(sampleCount)
+								.setTiling(vk::ImageTiling::eOptimal)
                                 .setFlags(flags);
     }
 
@@ -769,6 +771,7 @@ namespace nvrhi::vulkan
                             .setCompareOp(vk::CompareOp::eLess)
                             .setMinLod(0.f)
                             .setMaxLod(std::numeric_limits<float>::max())
+                            .setUnnormalizedCoordinates(false)
                             .setBorderColor(pickSamplerBorderColor(desc));
 
         vk::SamplerReductionModeCreateInfoEXT samplerReductionCreateInfo;

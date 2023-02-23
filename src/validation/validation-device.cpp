@@ -596,13 +596,13 @@ namespace nvrhi::validation
             case ResourceType::StructuredBuffer_SRV:
             case ResourceType::RawBuffer_SRV:
             case ResourceType::RayTracingAccelStruct:
-                if (bindingSet.SRV.get(item.slot))
+                if (bindingSet.SRV[item.slot])
                 {
-                    duplicates.SRV.set(item.slot, true);
+                    duplicates.SRV[item.slot] = true;
                 }
                 else
                 {
-                    bindingSet.SRV.set(item.slot, true);
+                    bindingSet.SRV[item.slot] = true;
                     bindingSet.rangeSRV.add(item.slot);
                 }
                 break;
@@ -611,13 +611,13 @@ namespace nvrhi::validation
             case ResourceType::TypedBuffer_UAV:
             case ResourceType::StructuredBuffer_UAV:
             case ResourceType::RawBuffer_UAV:
-                if (bindingSet.UAV.get(item.slot))
+                if (bindingSet.UAV[item.slot])
                 {
-                    duplicates.UAV.set(item.slot, true);
+                    duplicates.UAV[item.slot] = true;
                 }
                 else
                 {
-                    bindingSet.UAV.set(item.slot, true);
+                    bindingSet.UAV[item.slot] = true;
                     bindingSet.rangeUAV.add(item.slot);
                 }
                 break;
@@ -625,13 +625,13 @@ namespace nvrhi::validation
             case ResourceType::ConstantBuffer:
             case ResourceType::VolatileConstantBuffer:
             case ResourceType::PushConstants:
-                if (bindingSet.CB.get(item.slot))
+                if (bindingSet.CB[item.slot])
                 {
-                    duplicates.CB.set(item.slot, true);
+                    duplicates.CB[item.slot] = true;
                 }
                 else
                 {
-                    bindingSet.CB.set(item.slot, true);
+                    bindingSet.CB[item.slot] = true;
 
                     if (item.type == ResourceType::VolatileConstantBuffer)
                         ++bindingSet.numVolatileCBs;
@@ -641,13 +641,13 @@ namespace nvrhi::validation
                 break;
 
             case ResourceType::Sampler:
-                if (bindingSet.Sampler.get(item.slot))
+                if (bindingSet.Sampler[item.slot])
                 {
-                    duplicates.Sampler.set(item.slot, true);
+                    duplicates.Sampler[item.slot] = true;
                 }
                 else
                 {
-                    bindingSet.Sampler.set(item.slot, true);
+                    bindingSet.Sampler[item.slot] = true;
                     bindingSet.rangeSampler.add(item.slot);
                 }
                 break;
@@ -663,15 +663,22 @@ namespace nvrhi::validation
             }
         }
     }
-    
-    void BitsetToStream(const sparse_bitset& bits, std::ostream& os, const char* prefix, bool &first)
+
+    template<size_t N>
+    void BitsetToStream(const std::bitset<N>& bits, std::ostream& os, const char* prefix, bool &first)
     {
-        for (uint32_t slot : bits)
+        if (bits.any())
         {
-            if (!first)
-                os << ", ";
-            os << prefix << slot;
-            first = false;
+            for (uint32_t slot = 0; slot < bits.size(); slot++)
+            {
+                if (bits[slot])
+                {
+                    if (!first)
+                        os << ", ";
+                    os << prefix << slot;
+                    first = false;
+                }
+            }
         }
     }
 
@@ -819,15 +826,15 @@ namespace nvrhi::validation
 
                 for (int layoutIndex = 1; layoutIndex < numBindingLayouts; layoutIndex++)
                 {
-                    duplicates.SRV     |= bindings.SRV     & bindingsPerLayout[layoutIndex].SRV;
+                    duplicates.SRV |= bindings.SRV & bindingsPerLayout[layoutIndex].SRV;
                     duplicates.Sampler |= bindings.Sampler & bindingsPerLayout[layoutIndex].Sampler;
-                    duplicates.UAV     |= bindings.UAV     & bindingsPerLayout[layoutIndex].UAV;
-                    duplicates.CB      |= bindings.CB      & bindingsPerLayout[layoutIndex].CB;
+                    duplicates.UAV |= bindings.UAV & bindingsPerLayout[layoutIndex].UAV;
+                    duplicates.CB |= bindings.CB & bindingsPerLayout[layoutIndex].CB;
 
-                    bindings.SRV       |= bindingsPerLayout[layoutIndex].SRV;
-                    bindings.Sampler   |= bindingsPerLayout[layoutIndex].Sampler;
-                    bindings.UAV       |= bindingsPerLayout[layoutIndex].UAV;
-                    bindings.CB        |= bindingsPerLayout[layoutIndex].CB;
+                    bindings.SRV |= bindingsPerLayout[layoutIndex].SRV;
+                    bindings.Sampler |= bindingsPerLayout[layoutIndex].Sampler;
+                    bindings.UAV |= bindingsPerLayout[layoutIndex].UAV;
+                    bindings.CB |= bindingsPerLayout[layoutIndex].CB;
                 }
 
                 if (duplicates.any())
@@ -1511,15 +1518,15 @@ namespace nvrhi::validation
         ShaderBindingSet declaredNotBound;
         ShaderBindingSet boundNotDeclared;
 
-        declaredNotBound.SRV     = layoutBindings.SRV     - setBindings.SRV;
-        declaredNotBound.Sampler = layoutBindings.Sampler - setBindings.Sampler;
-        declaredNotBound.UAV     = layoutBindings.UAV     - setBindings.UAV;
-        declaredNotBound.CB      = layoutBindings.CB      - setBindings.CB;
+        declaredNotBound.SRV = layoutBindings.SRV & ~setBindings.SRV;
+        declaredNotBound.Sampler = layoutBindings.Sampler & ~setBindings.Sampler;
+        declaredNotBound.UAV = layoutBindings.UAV & ~setBindings.UAV;
+        declaredNotBound.CB = layoutBindings.CB & ~setBindings.CB;
 
-        boundNotDeclared.SRV     = setBindings.SRV        - layoutBindings.SRV;
-        boundNotDeclared.Sampler = setBindings.Sampler    - layoutBindings.Sampler;
-        boundNotDeclared.UAV     = setBindings.UAV        - layoutBindings.UAV;
-        boundNotDeclared.CB      = setBindings.CB         - layoutBindings.CB;
+        boundNotDeclared.SRV = ~layoutBindings.SRV & setBindings.SRV;
+        boundNotDeclared.Sampler = ~layoutBindings.Sampler & setBindings.Sampler;
+        boundNotDeclared.UAV = ~layoutBindings.UAV & setBindings.UAV;
+        boundNotDeclared.CB = ~layoutBindings.CB & setBindings.CB;
 
         if (declaredNotBound.any())
         {

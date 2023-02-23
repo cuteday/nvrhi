@@ -20,7 +20,7 @@
 * DEALINGS IN THE SOFTWARE.
 */
 
-#include "vulkan-backend.h"
+#include <nvrhi/vulkan/vulkan-backend.h>
 #include <nvrhi/common/misc.h>
 
 namespace nvrhi::vulkan
@@ -339,14 +339,6 @@ namespace nvrhi::vulkan
 
             requireBufferState(omm->dataBuffer, nvrhi::ResourceStates::OpacityMicromapWrite);
         }
-
-        if (desc.trackLiveness)
-        {
-            m_CurrentCmdBuf->referencedResources.push_back(desc.inputBuffer);
-            m_CurrentCmdBuf->referencedResources.push_back(desc.perOmmDescs);
-            m_CurrentCmdBuf->referencedResources.push_back(omm->dataBuffer);
-        }
-
         commitBarriers();
 
         auto buildInfo = vk::MicromapBuildInfoEXT()
@@ -568,9 +560,6 @@ namespace nvrhi::vulkan
 
     void CommandList::buildTopLevelAccelStructInternal(AccelStruct* as, VkDeviceAddress instanceData, size_t numInstances, rt::AccelStructBuildFlags buildFlags, uint64_t currentVersion)
     {
-        // Remove the internal flag
-        buildFlags = buildFlags & ~rt::AccelStructBuildFlags::AllowEmptyInstances;
-
         const bool performUpdate = (buildFlags & rt::AccelStructBuildFlags::PerformUpdate) != 0;
         if (performUpdate)
         {
@@ -649,7 +638,7 @@ namespace nvrhi::vulkan
     void CommandList::buildTopLevelAccelStruct(rt::IAccelStruct* _as, const rt::InstanceDesc* pInstances, size_t numInstances, rt::AccelStructBuildFlags buildFlags)
     {
         AccelStruct* as = checked_cast<AccelStruct*>(_as);
-
+        
         as->instances.resize(numInstances);
 
         for (size_t i = 0; i < numInstances; i++)
@@ -657,33 +646,27 @@ namespace nvrhi::vulkan
             const rt::InstanceDesc& src = pInstances[i];
             vk::AccelerationStructureInstanceKHR& dst = as->instances[i];
 
-            if (src.bottomLevelAS)
-            {
-                AccelStruct* blas = checked_cast<AccelStruct*>(src.bottomLevelAS);
+            AccelStruct* blas = checked_cast<AccelStruct*>(src.bottomLevelAS);
 #ifdef NVRHI_WITH_RTXMU
-                blas->rtxmuBuffer = m_Context.rtxMemUtil->GetBuffer(blas->rtxmuId);
-                blas->accelStruct = m_Context.rtxMemUtil->GetAccelerationStruct(blas->rtxmuId);
-                blas->accelStructDeviceAddress = m_Context.rtxMemUtil->GetDeviceAddress(blas->rtxmuId);
-                dst.setAccelerationStructureReference(blas->accelStructDeviceAddress);
+            blas->rtxmuBuffer = m_Context.rtxMemUtil->GetBuffer(blas->rtxmuId);
+            blas->accelStruct = m_Context.rtxMemUtil->GetAccelerationStruct(blas->rtxmuId);
+            blas->accelStructDeviceAddress = m_Context.rtxMemUtil->GetDeviceAddress(blas->rtxmuId);
+            dst.setAccelerationStructureReference(blas->accelStructDeviceAddress);
 #else
-                dst.setAccelerationStructureReference(blas->accelStructDeviceAddress);
-
-                if (m_EnableAutomaticBarriers)
-                {
-                    requireBufferState(blas->dataBuffer, nvrhi::ResourceStates::AccelStructBuildBlas);
-                }
+            dst.setAccelerationStructureReference(blas->accelStructDeviceAddress);
 #endif
-            }
-            else // !src.bottomLevelAS
-            {
-                dst.setAccelerationStructureReference(0);
-            }
-
             dst.setInstanceCustomIndex(src.instanceID);
             dst.setInstanceShaderBindingTableRecordOffset(src.instanceContributionToHitGroupIndex * m_Context.rayTracingPipelineProperties.shaderGroupBaseAlignment);
             dst.setFlags(convertInstanceFlags(src.flags));
             dst.setMask(src.instanceMask);
             memcpy(dst.transform.matrix.data(), src.transform, sizeof(float) * 12);
+
+#ifndef NVRHI_WITH_RTXMU
+            if (m_EnableAutomaticBarriers)
+            {
+                requireBufferState(blas->dataBuffer, nvrhi::ResourceStates::AccelStructBuildBlas);
+            }
+#endif
         }
 
 #ifdef NVRHI_WITH_RTXMU
